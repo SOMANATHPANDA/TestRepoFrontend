@@ -54,7 +54,7 @@ const UserController = {
 
       const userDto = new UserDTO(newUser);
 
-      return res.json({ user: userDto });
+      return res.json({ user: userDto, auth: true });
     } catch (error) {
       return next(error);
     }
@@ -147,6 +147,64 @@ const UserController = {
     res.clearCookie("refreshToken");
 
     res.status(200).json({ user: null, auth: false });
+  },
+
+  async refresh(req, res, next) {
+    // 1.get refreshToken from cookies
+    // 2.verify refreshToken
+    // 3.generate new tokens
+    // update db, return response
+    const originalRefreshToken = req.cookies.refreshToken;
+    let id;
+    try {
+      id = JWTService.verifyRefreshToken(originalRefreshToken)._id;
+    } catch (e) {
+      const error = {
+        status: 400,
+        message: "Unauthorized",
+      };
+      return next(error);
+    }
+    try {
+      const match = RefreshToken.findOne({
+        _id: id,
+        token: originalRefreshToken,
+      });
+      if (!match) {
+        const error = {
+          status: 400,
+          message: "Unauthorized",
+        };
+        return next(error);
+      }
+    } catch (e) {
+      return next(error);
+    }
+    try {
+      const accessToken = JWTService.signAccessToken({ _id: id }, "1d");
+      const refreshToken = JWTService.signRefreshToken({ _id: id }, "2d");
+
+      await RefreshToken.updateOne({ _id: id }, { token: refreshToken });
+
+      res.cookie("accessToken", accessToken, {
+        maxAge: 1000 * 60 * 60 * 24 * 10,
+        httpOnly: true,
+        sameSite: "None",
+        secure: true,
+      });
+      res.cookie("refreshToken", refreshToken, {
+        maxAge: 1000 * 60 * 60 * 24 * 20,
+        httpOnly: true,
+        sameSite: "None",
+        secure: true,
+      });
+    } catch (e) {
+      return next(e);
+    }
+    const user = await User.findOne({ _id: id });
+
+    const userDto = new UserDTO(user);
+    return res.status(200).json({ user: userDto, auth: true });
   },
 };
 module.exports = UserController;
