@@ -52,7 +52,9 @@ const UserController = {
 
       await newUser.save();
 
-      return res.json({ newUser });
+      const userDto = new UserDTO(newUser);
+
+      return res.json({ user: userDto });
     } catch (error) {
       return next(error);
     }
