@@ -52,6 +52,31 @@ const UserController = {
 
       await newUser.save();
 
+      const accessToken = JWTService.signAccessToken({ _id: newUser._id }, "10d");
+      const refreshToken = JWTService.signRefreshToken(
+        { _id: newUser._id },
+        "20d"
+      );
+      await RefreshToken.updateOne(
+        {
+          _id: newUser._id,
+        },
+        { token: refreshToken },
+        { upsert: true }
+      );
+
+      res.cookie("accessToken", accessToken, {
+        maxAge: 1000 * 60 * 60 * 24 * 10,
+        httpOnly: true,
+        sameSite: "None",
+        secure: true,
+      });
+      res.cookie("refreshToken", refreshToken, {
+        maxAge: 1000 * 60 * 60 * 24 * 20,
+        httpOnly: true,
+        sameSite: "None",
+        secure: true,
+      });
       const userDto = new UserDTO(newUser);
 
       return res.json({ user: userDto, auth: true });
