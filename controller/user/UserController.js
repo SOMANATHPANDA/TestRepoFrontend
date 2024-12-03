@@ -7,6 +7,7 @@ const UserDTO = require("../../dto/user/user");
 
 const UserController = {
   async signUp(req, res, next) {
+    
     const signUpSchema = Joi.object({
       firstName: Joi.string().required(),
       lastName: Joi.string().required(),
